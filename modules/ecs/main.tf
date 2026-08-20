@@ -91,6 +91,13 @@ resource "aws_ecs_task_definition" "this" {
         { name = "CLERK_AUTHORIZED_PARTIES", value = var.clerk_authorized_parties },
         { name = "PLAID_ENV", value = var.plaid_env },
         { name = "PLAID_WEBHOOK_URL", value = var.plaid_webhook_url },
+        { name = "BEDROCK_MODEL_ID", value = var.bedrock_model_id },
+        # Reuses the SAME data source already used below for the log
+        # group's own region, rather than a separate hardcoded value --
+        # this way AWS_REGION always matches wherever the task is
+        # actually running, not a value someone has to remember to
+        # keep in sync if this is ever deployed somewhere else.
+        { name = "AWS_REGION", value = data.aws_region.current.name },
       ]
       secrets = [
         {

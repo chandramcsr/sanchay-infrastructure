@@ -69,3 +69,9 @@ variable "plaid_env" {
   type        = string
   default     = "sandbox"
 }
+
+variable "bedrock_model_id" {
+  description = "Bedrock model ID for Ask Sanchay -- the cross-region inference profile ID, not the bare foundation-model ID (this app doesn't run in one of Llama 4's two natively-hosted regions, so the bare ID fails outright)"
+  type        = string
+  default     = "us.meta.llama4-scout-17b-instruct-v1:0"
+}

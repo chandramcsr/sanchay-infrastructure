@@ -39,8 +39,61 @@ resource "aws_iam_role_policy" "execution_read_parameters" {
 }
 
 # Task role: permissions the running sanchay-api application itself needs.
-# Empty for now — attach policies here as the app needs to call other AWS services.
 resource "aws_iam_role" "task" {
   name               = "${var.project_name}-${var.environment}-ecs-task"
   assume_role_policy = data.aws_iam_policy_document.assume_ecs_tasks.json
+}
+
+# Needed to build the exact ARNs below -- account ID and region come
+# from whoever/wherever this is actually being applied, not hardcoded,
+# so this stays portable across accounts/regions rather than only
+# working for the specific account this was first written against.
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# Ask Sanchay's Bedrock access. Only two permission-relevant details
+# here, both confirmed against AWS's own documentation before writing
+# this, not assumed:
+#
+# 1. This app runs in us-east-2, which is NOT one of Llama 4's two
+#    natively-hosted regions (us-east-1/us-west-2) -- var.bedrock_model_id
+#    is therefore the CROSS-REGION INFERENCE PROFILE id (the "us."
+#    prefix), not the bare foundation-model id. Calling it any other
+#    way fails outright from this region.
+#
+# 2. Because it's a cross-region profile, Bedrock can route the actual
+#    inference call to any of the three regions it spans -- so the
+#    IAM policy needs the underlying foundation-model ARN granted in
+#    ALL THREE regions (confirmed against a real reported failure
+#    where granting only the home region caused AccessDenied whenever
+#    Bedrock happened to route elsewhere), plus the inference-profile
+#    ARN itself in the region this is actually deployed to.
+#
+# trimprefix strips the profile's "us." so the same variable drives
+# both the foundation-model ARNs here AND the app's own
+# BEDROCK_MODEL_ID env var (see the ecs module) -- one source, not two
+# independently-typed values that could quietly drift apart the way
+# cors_origins/clerk_authorized_parties already did once.
+locals {
+  bedrock_foundation_model_id = trimprefix(var.bedrock_model_id, "us.")
+  bedrock_cross_regions       = ["us-east-1", "us-east-2", "us-west-2"]
+}
+
+data "aws_iam_policy_document" "bedrock_invoke" {
+  statement {
+    sid       = "InvokeFoundationModelAcrossCrossRegionProfile"
+    actions   = ["bedrock:InvokeModel", "bedrock:Converse", "bedrock:ConverseStream"]
+    resources = [for r in local.bedrock_cross_regions : "arn:aws:bedrock:${r}::foundation-model/${local.bedrock_foundation_model_id}"]
+  }
+  statement {
+    sid       = "InvokeCrossRegionInferenceProfile"
+    actions   = ["bedrock:InvokeModel", "bedrock:Converse", "bedrock:ConverseStream"]
+    resources = ["arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.bedrock_model_id}"]
+  }
+}
+
+resource "aws_iam_role_policy" "task_bedrock_invoke" {
+  name   = "${var.project_name}-${var.environment}-bedrock-invoke"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.bedrock_invoke.json
 }

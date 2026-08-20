@@ -87,3 +87,8 @@ variable "plaid_webhook_url" {
   description = "Full URL sanchay-api should register with Plaid for transaction webhooks"
   type        = string
 }
+
+variable "bedrock_model_id" {
+  description = "Bedrock model ID for Ask Sanchay -- the cross-region inference profile ID"
+  type        = string
+}

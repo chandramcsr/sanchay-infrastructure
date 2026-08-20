@@ -25,8 +25,9 @@ module "ecr" {
 module "iam" {
   source = "./modules/iam"
 
-  project_name = var.project_name
-  environment  = var.environment
+  project_name     = var.project_name
+  environment      = var.environment
+  bedrock_model_id = var.bedrock_model_id
 }
 
 module "alb" {
@@ -67,6 +68,7 @@ module "ecs" {
   cors_origins             = var.frontend_origin
   clerk_authorized_parties = var.frontend_origin
   plaid_env                = var.plaid_env
+  bedrock_model_id         = var.bedrock_model_id
   # Computed directly from the ALB module's own output, not a
   # separate variable the user would need to already know (and
   # manually keep in sync) before the ALB itself is created.
