@@ -9,10 +9,10 @@ locals {
 module "networking" {
   source = "./modules/networking"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  vpc_cidr             = var.vpc_cidr
-  public_subnet_cidrs  = var.public_subnet_cidrs
+  project_name        = var.project_name
+  environment         = var.environment
+  vpc_cidr            = var.vpc_cidr
+  public_subnet_cidrs = var.public_subnet_cidrs
 }
 
 module "ecr" {
@@ -32,11 +32,11 @@ module "iam" {
 module "alb" {
   source = "./modules/alb"
 
-  project_name    = var.project_name
-  environment     = var.environment
-  vpc_id          = module.networking.vpc_id
-  public_subnets  = module.networking.public_subnet_ids
-  container_port  = var.container_port
+  project_name   = var.project_name
+  environment    = var.environment
+  vpc_id         = module.networking.vpc_id
+  public_subnets = module.networking.public_subnet_ids
+  container_port = var.container_port
 }
 
 module "ecs" {
@@ -55,7 +55,6 @@ module "ecs" {
   task_role_arn         = module.iam.task_role_arn
   target_group_arn      = module.alb.target_group_arn
   alb_security_group_id = module.alb.alb_security_group_id
-  database_url          = var.database_url
   log_group_name        = module.monitoring.log_group_name
   cluster_name          = local.ecs_cluster_name
   service_name          = local.ecs_service_name

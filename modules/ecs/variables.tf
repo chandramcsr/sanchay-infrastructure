@@ -50,11 +50,6 @@ variable "alb_security_group_id" {
   type = string
 }
 
-variable "database_url" {
-  type      = string
-  sensitive = true
-}
-
 variable "log_group_name" {
   type = string
 }

@@ -27,15 +27,16 @@ terraform init
 terraform apply \
   -var-file=environments/prod/terraform.tfvars \
   -var="container_image=<account-id>.dkr.ecr.us-east-2.amazonaws.com/sanchay-prod-api:latest" \
-  -var="database_url=$DATABASE_URL" \
   -state=environments/prod/terraform.tfstate
 ```
 
 Swap the `-var-file` and `-state` paths for `dev` or `staging`.
 
-`container_image` and `database_url` are passed at apply time rather than
-committed to a `.tfvars` file, since one's build-specific and the other's a
-secret.
+`container_image` is passed at apply time rather than committed to a
+`.tfvars` file, since it's build-specific. The database URL isn't a Terraform
+variable at all — ECS reads it directly from SSM Parameter Store at
+`/sanchay-api/database-url`, so it must be populated there before the task
+runs.
 
 ## Current gaps
 

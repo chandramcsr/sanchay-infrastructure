@@ -2,15 +2,10 @@ resource "aws_ecs_cluster" "this" {
   name = var.cluster_name
 }
 
-# Neon Postgres connection string, stored in Secrets Manager and
+# Neon Postgres connection string, read from SSM Parameter Store and
 # injected into the container rather than passed as a plain env var.
-resource "aws_secretsmanager_secret" "database_url" {
-  name = "${var.project_name}-${var.environment}-database-url"
-}
-
-resource "aws_secretsmanager_secret_version" "database_url" {
-  secret_id     = aws_secretsmanager_secret.database_url.id
-  secret_string = var.database_url
+data "aws_ssm_parameter" "database_url" {
+  name = "/sanchay-api/database-url"
 }
 
 resource "aws_security_group" "tasks" {
@@ -60,7 +55,7 @@ resource "aws_ecs_task_definition" "this" {
       secrets = [
         {
           name      = "DATABASE_URL"
-          valueFrom = aws_secretsmanager_secret.database_url.arn
+          valueFrom = data.aws_ssm_parameter.database_url.arn
         }
       ]
       logConfiguration = {

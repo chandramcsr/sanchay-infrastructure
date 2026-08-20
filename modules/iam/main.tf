@@ -20,18 +20,18 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
 }
 
 # The managed policy above covers ECR pull + log creation, but not reading
-# secrets — needed so the task can fetch DATABASE_URL from Secrets Manager.
-data "aws_iam_policy_document" "read_secrets" {
+# parameters — needed so the task can fetch DATABASE_URL from SSM Parameter Store.
+data "aws_iam_policy_document" "read_parameters" {
   statement {
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = ["arn:aws:secretsmanager:*:*:secret:${var.project_name}-${var.environment}-*"]
+    actions   = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = ["arn:aws:ssm:*:*:parameter/sanchay-api/database-url"]
   }
 }
 
-resource "aws_iam_role_policy" "execution_read_secrets" {
-  name   = "${var.project_name}-${var.environment}-read-secrets"
+resource "aws_iam_role_policy" "execution_read_parameters" {
+  name   = "${var.project_name}-${var.environment}-read-parameters"
   role   = aws_iam_role.execution.id
-  policy = data.aws_iam_policy_document.read_secrets.json
+  policy = data.aws_iam_policy_document.read_parameters.json
 }
 
 # Task role: permissions the running sanchay-api application itself needs.

@@ -6,7 +6,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name          = "${var.project_name}-${var.environment}-ecs-high-cpu"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods   = 3
+  evaluation_periods  = 3
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
   period              = 60
