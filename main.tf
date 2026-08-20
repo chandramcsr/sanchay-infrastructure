@@ -58,6 +58,19 @@ module "ecs" {
   log_group_name        = module.monitoring.log_group_name
   cluster_name          = local.ecs_cluster_name
   service_name          = local.ecs_service_name
+
+  # Both derived from the same variable rather than two independent
+  # ones -- these have always needed to be identical in practice (the
+  # Amplify frontend's own origin), and a single source makes that
+  # impossible to get out of sync by editing one and forgetting the
+  # other.
+  cors_origins             = var.frontend_origin
+  clerk_authorized_parties = var.frontend_origin
+  plaid_env                = var.plaid_env
+  # Computed directly from the ALB module's own output, not a
+  # separate variable the user would need to already know (and
+  # manually keep in sync) before the ALB itself is created.
+  plaid_webhook_url = "http://${module.alb.alb_dns_name}/api/v1/plaid/webhook"
 }
 
 module "monitoring" {

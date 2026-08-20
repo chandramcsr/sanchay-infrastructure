@@ -8,6 +8,32 @@ data "aws_ssm_parameter" "database_url" {
   name = "/sanchay-api/database-url"
 }
 
+# The other five secrets sanchay-api reads at startup -- all missing
+# from the original module entirely, meaning Clerk auth verification,
+# the Clerk user.deleted webhook, Plaid account data, and Plaid's
+# encrypted access tokens (field_encryption_key) had nothing real to
+# read and would have failed the moment a request actually exercised
+# any of them.
+data "aws_ssm_parameter" "clerk_jwt_key" {
+  name = "/sanchay-api/clerk-jwt-key"
+}
+
+data "aws_ssm_parameter" "clerk_webhook_secret" {
+  name = "/sanchay-api/clerk-webhook-secret"
+}
+
+data "aws_ssm_parameter" "field_encryption_key" {
+  name = "/sanchay-api/field-encryption-key"
+}
+
+data "aws_ssm_parameter" "plaid_client_id" {
+  name = "/sanchay-api/plaid-client-id"
+}
+
+data "aws_ssm_parameter" "plaid_secret" {
+  name = "/sanchay-api/plaid-secret"
+}
+
 resource "aws_security_group" "tasks" {
   name        = "${var.project_name}-${var.environment}-tasks-sg"
   description = "Allow inbound from the ALB to sanchay-api tasks"
@@ -52,11 +78,53 @@ resource "aws_ecs_task_definition" "this" {
           protocol      = "tcp"
         }
       ]
+      # Overrides the image's own default CMD (start.sh, which runs
+      # `alembic upgrade head` before starting uvicorn). Without this,
+      # every task that starts -- and Fargate can start more than one
+      # at a time, on any deployment or scale-out -- races the same
+      # migration concurrently. start.sh's own comments already
+      # document why this matters; this task definition just wasn't
+      # honoring it. Migrations are handled by CI instead.
+      command = ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", tostring(var.container_port)]
+      environment = [
+        { name = "CORS_ORIGINS", value = var.cors_origins },
+        { name = "CLERK_AUTHORIZED_PARTIES", value = var.clerk_authorized_parties },
+        { name = "PLAID_ENV", value = var.plaid_env },
+        { name = "PLAID_WEBHOOK_URL", value = var.plaid_webhook_url },
+      ]
       secrets = [
         {
-          name      = "DATABASE_URL"
+          # The app reads this as SANCHAY_APP_DATABASE_URL, not
+          # DATABASE_URL (checked directly against config.py -- no
+          # alias is set on that field, so pydantic-settings only
+          # matches the exact uppercased name). The previous name here
+          # meant the app never saw this value at all, and silently
+          # fell back to its own SQLite default instead of erroring --
+          # every deploy so far has been running against a throwaway
+          # local database, not Neon.
+          name      = "SANCHAY_APP_DATABASE_URL"
           valueFrom = data.aws_ssm_parameter.database_url.arn
-        }
+        },
+        {
+          name      = "CLERK_JWT_KEY"
+          valueFrom = data.aws_ssm_parameter.clerk_jwt_key.arn
+        },
+        {
+          name      = "CLERK_WEBHOOK_SECRET"
+          valueFrom = data.aws_ssm_parameter.clerk_webhook_secret.arn
+        },
+        {
+          name      = "FIELD_ENCRYPTION_KEY"
+          valueFrom = data.aws_ssm_parameter.field_encryption_key.arn
+        },
+        {
+          name      = "PLAID_CLIENT_ID"
+          valueFrom = data.aws_ssm_parameter.plaid_client_id.arn
+        },
+        {
+          name      = "PLAID_SECRET"
+          valueFrom = data.aws_ssm_parameter.plaid_secret.arn
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs"

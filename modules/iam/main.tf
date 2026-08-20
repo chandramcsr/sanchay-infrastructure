@@ -20,11 +20,15 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
 }
 
 # The managed policy above covers ECR pull + log creation, but not reading
-# parameters — needed so the task can fetch DATABASE_URL from SSM Parameter Store.
+# parameters — needed so the task can fetch its secrets from SSM Parameter
+# Store. Scoped to the whole /sanchay-api/* prefix, not one parameter at a
+# time — every secret the app needs (database URL, Clerk keys, Plaid keys,
+# the field encryption key) lives under this same prefix, and the app reads
+# all of them at startup, not just one.
 data "aws_iam_policy_document" "read_parameters" {
   statement {
     actions   = ["ssm:GetParameter", "ssm:GetParameters"]
-    resources = ["arn:aws:ssm:*:*:parameter/sanchay-api/database-url"]
+    resources = ["arn:aws:ssm:*:*:parameter/sanchay-api/*"]
   }
 }
 

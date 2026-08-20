@@ -55,3 +55,17 @@ variable "public_subnet_cidrs" {
   type        = list(string)
   default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
+
+# The Amplify frontend's domain -- required, no default, since a
+# wrong or missing value here means every real request gets blocked
+# by CORS or Clerk token verification, not a loud error at apply time.
+variable "frontend_origin" {
+  description = "The Amplify frontend's full origin, e.g. https://main.xxxxx.amplifyapp.com -- used for both CORS_ORIGINS and CLERK_AUTHORIZED_PARTIES, which must match exactly"
+  type        = string
+}
+
+variable "plaid_env" {
+  description = "Plaid environment: sandbox or production"
+  type        = string
+  default     = "sandbox"
+}
