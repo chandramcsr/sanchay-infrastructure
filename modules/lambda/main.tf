@@ -31,8 +31,6 @@ data "aws_ssm_parameter" "plaid_secret" {
   name = "/sanchay-api/plaid-secret"
 }
 
-data "aws_region" "current" {}
-
 resource "aws_lambda_function" "api" {
   function_name = "${var.project_name}-${var.environment}-api"
   role          = var.lambda_execution_role_arn
@@ -53,7 +51,15 @@ resource "aws_lambda_function" "api" {
       PLAID_ENV                 = var.plaid_env
       PLAID_WEBHOOK_URL         = var.plaid_webhook_url
       BEDROCK_MODEL_ID          = var.bedrock_model_id
-      AWS_REGION                = data.aws_region.current.name
+      # AWS_REGION is deliberately NOT set here -- it's a RESERVED
+      # Lambda environment key (confirmed by a real apply failure:
+      # "InvalidParameterValueException: ... reserved keys ... AWS_REGION"),
+      # which Lambda refuses to let you override via Terraform or the
+      # console. Nothing is lost by not setting it -- Lambda
+      # automatically provides AWS_REGION to every function at
+      # runtime, matching wherever it's actually deployed, so
+      # settings.aws_region in the app reads the correct value with
+      # zero configuration here.
       SANCHAY_APP_DATABASE_URL  = data.aws_ssm_parameter.database_url.value
       CLERK_JWT_KEY             = data.aws_ssm_parameter.clerk_jwt_key.value
       CLERK_WEBHOOK_SECRET      = data.aws_ssm_parameter.clerk_webhook_secret.value
