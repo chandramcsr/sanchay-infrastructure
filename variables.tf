@@ -75,3 +75,8 @@ variable "bedrock_model_id" {
   type        = string
   default     = "us.meta.llama4-scout-17b-instruct-v1:0"
 }
+
+variable "lambda_container_image" {
+  description = "Full ECR image URI (repo:tag) for the Lambda-packaged sanchay-api, built from Dockerfile.lambda -- a different image from container_image, which is built from the plain Dockerfile for ECS"
+  type        = string
+}

@@ -97,3 +97,50 @@ resource "aws_iam_role_policy" "task_bedrock_invoke" {
   role   = aws_iam_role.task.id
   policy = data.aws_iam_policy_document.bedrock_invoke.json
 }
+
+# Lambda execution role -- for the Step-3 Lambda+Mangum path, running
+# alongside ECS. A genuinely different trust policy from the ECS roles
+# above (lambda.amazonaws.com assumes this, not ecs-tasks.amazonaws.com),
+# so it can't just reuse aws_iam_role.execution/task even though the
+# PERMISSIONS it needs largely overlap -- reads the same secrets,
+# calls the same Bedrock model.
+data "aws_iam_policy_document" "assume_lambda" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "lambda_execution" {
+  name               = "${var.project_name}-${var.environment}-lambda-execution"
+  assume_role_policy = data.aws_iam_policy_document.assume_lambda.json
+}
+
+# AWS-managed policy covering CloudWatch Logs write access -- the
+# Lambda equivalent of what AmazonECSTaskExecutionRolePolicy covers
+# for the ECS execution role above, just without the ECR-pull
+# permission ECS needs and Lambda container images pull differently
+# (via the Lambda service itself, not this role).
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Same policy documents already built for the ECS task role above --
+# reused here rather than redefining the same SSM prefix and Bedrock
+# ARNs a second time for a role that needs identical access to the
+# identical resources.
+resource "aws_iam_role_policy" "lambda_read_parameters" {
+  name   = "${var.project_name}-${var.environment}-lambda-read-parameters"
+  role   = aws_iam_role.lambda_execution.id
+  policy = data.aws_iam_policy_document.read_parameters.json
+}
+
+resource "aws_iam_role_policy" "lambda_bedrock_invoke" {
+  name   = "${var.project_name}-${var.environment}-lambda-bedrock-invoke"
+  role   = aws_iam_role.lambda_execution.id
+  policy = data.aws_iam_policy_document.bedrock_invoke.json
+}
