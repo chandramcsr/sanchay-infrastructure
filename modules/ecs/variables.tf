@@ -92,3 +92,8 @@ variable "bedrock_model_id" {
   description = "Bedrock model ID for Ask Sanchay -- the cross-region inference profile ID"
   type        = string
 }
+
+variable "sns_topic_arn" {
+  description = "The sanchay-events SNS topic's ARN -- passed to the app as SNS_TOPIC_ARN"
+  type        = string
+}

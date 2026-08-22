@@ -144,3 +144,27 @@ resource "aws_iam_role_policy" "lambda_bedrock_invoke" {
   role   = aws_iam_role.lambda_execution.id
   policy = data.aws_iam_policy_document.bedrock_invoke.json
 }
+
+# Publishing to the sanchay-events topic -- needed by BOTH roles above,
+# since either deployment path (ECS or the API Lambda) could handle
+# the transaction-creation request that triggers a BudgetExceeded
+# publish. One shared policy document, attached twice, same pattern
+# already established for read_parameters/bedrock_invoke above.
+data "aws_iam_policy_document" "publish_events" {
+  statement {
+    actions   = ["sns:Publish"]
+    resources = [var.sns_topic_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "task_publish_events" {
+  name   = "${var.project_name}-${var.environment}-publish-events"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.publish_events.json
+}
+
+resource "aws_iam_role_policy" "lambda_publish_events" {
+  name   = "${var.project_name}-${var.environment}-lambda-publish-events"
+  role   = aws_iam_role.lambda_execution.id
+  policy = data.aws_iam_policy_document.publish_events.json
+}

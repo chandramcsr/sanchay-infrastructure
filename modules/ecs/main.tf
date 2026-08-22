@@ -92,6 +92,7 @@ resource "aws_ecs_task_definition" "this" {
         { name = "PLAID_ENV", value = var.plaid_env },
         { name = "PLAID_WEBHOOK_URL", value = var.plaid_webhook_url },
         { name = "BEDROCK_MODEL_ID", value = var.bedrock_model_id },
+        { name = "SNS_TOPIC_ARN", value = var.sns_topic_arn },
         # Reuses the SAME data source already used below for the log
         # group's own region, rather than a separate hardcoded value --
         # this way AWS_REGION always matches wherever the task is

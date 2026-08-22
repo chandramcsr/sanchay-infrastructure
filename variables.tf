@@ -76,6 +76,16 @@ variable "bedrock_model_id" {
   default     = "us.meta.llama4-scout-17b-instruct-v1:0"
 }
 
+variable "ses_sender_email" {
+  description = "Must be verified in the SES console before this actually sends -- SES also starts in sandbox mode, restricting recipients to verified addresses until production access is separately requested"
+  type        = string
+}
+
+variable "notification_lambda_source_path" {
+  description = "Local path to sanchay-api's app/notification_processor.py -- e.g. ../sanchay-api/app/notification_processor.py if both repos are cloned as siblings"
+  type        = string
+}
+
 variable "lambda_container_image" {
   description = "Full ECR image URI (repo:tag) for the Lambda-packaged sanchay-api, built from Dockerfile.lambda -- a different image from container_image, which is built from the plain Dockerfile for ECS"
   type        = string

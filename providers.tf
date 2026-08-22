@@ -6,6 +6,13 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    # Needed by modules/notifications' data.archive_file -- zips the
+    # notification processor Lambda's source at apply time, no
+    # separate build/push step (unlike the container-image API Lambda).
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 
   # No remote backend configured yet — state is local for now.

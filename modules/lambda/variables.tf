@@ -45,3 +45,7 @@ variable "plaid_webhook_url" {
 variable "bedrock_model_id" {
   type = string
 }
+
+variable "sns_topic_arn" {
+  type = string
+}

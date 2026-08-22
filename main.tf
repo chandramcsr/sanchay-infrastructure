@@ -28,6 +28,21 @@ module "iam" {
   project_name     = var.project_name
   environment      = var.environment
   bedrock_model_id = var.bedrock_model_id
+  sns_topic_arn    = module.notifications.sns_topic_arn
+}
+
+# SNS -> SQS -> a small, dependency-free Lambda -> SES. Declared here,
+# after iam, but referenced BY iam above -- Terraform resolves this by
+# each resource's own real dependencies, not by where a module happens
+# to be written in this file (same reasoning already applied to the
+# lambda/apigateway pair below).
+module "notifications" {
+  source = "./modules/notifications"
+
+  project_name                     = var.project_name
+  environment                      = var.environment
+  ses_sender_email                 = var.ses_sender_email
+  notification_lambda_source_path  = var.notification_lambda_source_path
 }
 
 module "alb" {
@@ -69,6 +84,7 @@ module "ecs" {
   clerk_authorized_parties = var.frontend_origin
   plaid_env                = var.plaid_env
   bedrock_model_id         = var.bedrock_model_id
+  sns_topic_arn            = module.notifications.sns_topic_arn
   # Computed directly from the ALB module's own output, not a
   # separate variable the user would need to already know (and
   # manually keep in sync) before the ALB itself is created.
@@ -132,5 +148,6 @@ module "lambda" {
   clerk_authorized_parties = var.frontend_origin
   plaid_env                = var.plaid_env
   bedrock_model_id         = var.bedrock_model_id
+  sns_topic_arn            = module.notifications.sns_topic_arn
   plaid_webhook_url        = "http://${module.alb.alb_dns_name}/api/v1/plaid/webhook"
 }

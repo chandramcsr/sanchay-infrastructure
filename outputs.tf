@@ -29,3 +29,17 @@ output "api_gateway_endpoint" {
 output "lambda_function_name" {
   value = module.lambda.function_name
 }
+
+output "sns_topic_arn" {
+  description = "Publish target for future event types beyond BudgetExceeded"
+  value       = module.notifications.sns_topic_arn
+}
+
+output "notification_processor_function_name" {
+  value = module.notifications.notification_processor_function_name
+}
+
+output "notification_dlq_url" {
+  description = "Check here for BudgetExceeded events that failed processing repeatedly"
+  value       = module.notifications.notification_dlq_url
+}
