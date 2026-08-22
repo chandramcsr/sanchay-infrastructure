@@ -59,14 +59,63 @@ resource "aws_sns_topic_subscription" "notification_queue" {
 }
 
 # --- Notification processor Lambda ---
-# Deliberately zip-based, not a container image like the API Lambda --
-# this function only needs boto3, which ships pre-installed in every
-# AWS Lambda Python runtime, so there's no dependency to bundle and no
-# Docker build/ECR push needed for this piece at all.
+# Zip-based, not a container image like the API Lambda -- but no
+# longer a bare single-file zip either, now that this function does
+# real OpenTelemetry span creation and context propagation (added
+# alongside this same change): opentelemetry-api/sdk/exporter-otlp-
+# proto-http are genuinely NOT pre-installed in Lambda's runtime the
+# way boto3 is, so they need bundling now. Still meaningfully simpler
+# than the API Lambda's path -- a pip install + zip, not a Docker
+# build/ECR push.
+
+locals {
+  notification_processor_repo_root = dirname(dirname(var.notification_lambda_source_path))
+  notification_processor_build_dir = "${path.module}/build"
+}
+
+# Confirmed the exact resulting dependency set (opentelemetry-api/sdk/
+# exporter-otlp-proto-http plus their own transitive deps -- protobuf,
+# requests, googleapis-common-protos, etc.) in a clean local venv
+# before writing this, not assumed. --platform/--implementation/
+# --python-version/--only-binary force pip to fetch the LINUX-
+# compatible wheels regardless of which OS actually runs `terraform
+# apply` -- without this, a build run from Windows or macOS could
+# silently bundle wheels (protobuf in particular ships compiled
+# extensions) that fail at import time once actually running on
+# Lambda's own Linux runtime.
+resource "null_resource" "build_notification_processor" {
+  triggers = {
+    source_hash       = filesha256(var.notification_lambda_source_path)
+    requirements_hash = filesha256("${local.notification_processor_repo_root}/requirements-notification-processor.txt")
+  }
+
+  provisioner "local-exec" {
+    # Terraform's local-exec defaults to cmd.exe on Windows regardless
+    # of which shell `terraform apply` itself was run from -- cmd.exe
+    # doesn't understand rm -rf/mkdir -p. Forcing bash explicitly
+    # works on Windows (via Git Bash, already on PATH given it's what
+    # ran the actual apply), macOS, and Linux alike, rather than
+    # needing a second, cmd.exe-specific version of this command.
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      rm -rf "${local.notification_processor_build_dir}"
+      mkdir -p "${local.notification_processor_build_dir}"
+      pip install \
+        --target "${local.notification_processor_build_dir}" \
+        --platform manylinux2014_x86_64 \
+        --implementation cp \
+        --python-version 3.12 \
+        --only-binary=:all: \
+        -r "${local.notification_processor_repo_root}/requirements-notification-processor.txt"
+      cp "${var.notification_lambda_source_path}" "${local.notification_processor_build_dir}/notification_processor.py"
+    EOT
+  }
+}
 
 data "archive_file" "notification_processor" {
+  depends_on  = [null_resource.build_notification_processor]
   type        = "zip"
-  source_file = var.notification_lambda_source_path
+  source_dir  = local.notification_processor_build_dir
   output_path = "${path.module}/notification_processor.zip"
 }
 
@@ -136,7 +185,9 @@ resource "aws_lambda_function" "notification_processor" {
 
   environment {
     variables = {
-      SES_SENDER_EMAIL = var.ses_sender_email
+      SES_SENDER_EMAIL           = var.ses_sender_email
+      OTEL_EXPORTER_OTLP_ENDPOINT = var.otel_exporter_otlp_endpoint
+      OTEL_EXPORTER_OTLP_HEADERS  = var.otel_exporter_otlp_headers
     }
   }
 }

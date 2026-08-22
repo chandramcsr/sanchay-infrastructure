@@ -49,3 +49,16 @@ variable "bedrock_model_id" {
 variable "sns_topic_arn" {
   type = string
 }
+
+variable "otel_exporter_otlp_endpoint" {
+  description = "Grafana Cloud (or any OTLP-compatible backend)'s OTLP endpoint -- empty string when not yet configured"
+  type        = string
+  default     = ""
+}
+
+variable "otel_exporter_otlp_headers" {
+  description = "OTLP auth headers, e.g. Grafana Cloud's Basic auth token -- empty string when not yet configured"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

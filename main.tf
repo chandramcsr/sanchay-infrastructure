@@ -43,6 +43,8 @@ module "notifications" {
   environment                      = var.environment
   ses_sender_email                 = var.ses_sender_email
   notification_lambda_source_path  = var.notification_lambda_source_path
+  otel_exporter_otlp_endpoint      = var.otel_exporter_otlp_endpoint
+  otel_exporter_otlp_headers       = var.otel_exporter_otlp_headers
 }
 
 module "monitoring" {
@@ -103,6 +105,8 @@ module "lambda" {
   plaid_env                = var.plaid_env
   bedrock_model_id         = var.bedrock_model_id
   sns_topic_arn            = module.notifications.sns_topic_arn
+  otel_exporter_otlp_endpoint = var.otel_exporter_otlp_endpoint
+  otel_exporter_otlp_headers  = var.otel_exporter_otlp_headers
   # Was module.alb.alb_dns_name -- the ALB it pointed at is gone
   # (manually deleted along with ECS). API Gateway's own endpoint is
   # now the only real place Plaid should send webhooks. trimsuffix

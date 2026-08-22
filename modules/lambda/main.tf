@@ -52,6 +52,8 @@ resource "aws_lambda_function" "api" {
       PLAID_WEBHOOK_URL         = var.plaid_webhook_url
       BEDROCK_MODEL_ID          = var.bedrock_model_id
       SNS_TOPIC_ARN             = var.sns_topic_arn
+      OTEL_EXPORTER_OTLP_ENDPOINT = var.otel_exporter_otlp_endpoint
+      OTEL_EXPORTER_OTLP_HEADERS  = var.otel_exporter_otlp_headers
       # AWS_REGION is deliberately NOT set here -- it's a RESERVED
       # Lambda environment key (confirmed by a real apply failure:
       # "InvalidParameterValueException: ... reserved keys ... AWS_REGION"),
